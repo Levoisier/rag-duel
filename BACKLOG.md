@@ -31,13 +31,13 @@
 
 > Goal: a coherent repo skeleton and the full doc set, generated from this backlog + the project idea. This phase is driven by the kickoff prompt.
 
-- [ ] **BOOT-01** — Initialize repo structure: `/laravel`, `/python`, `/docs`, `/infra`, root `docker-compose.yml` placeholder, `.gitignore`, `.editorconfig`. _AC: tree exists and is committed._
-- [ ] **BOOT-02** — Generate `README.md` (what/why, quickstart, stack, screenshots placeholder). _AC: a new dev can understand the project in 60s._
-- [ ] **BOOT-03** — Generate `CLAUDE.md` and `AGENTS.md` (project conventions, commands, guardrails, "definition of done", how to run tests/lint for both stacks). _AC: both files agree and reference real commands from this repo._
-- [ ] **BOOT-04** — Generate `LESSONS.md` (empty template with a dated‑entry format). _AC: file exists with a usage note and one example entry._
-- [ ] **BOOT-05** — Generate `docs/ARCHITECTURE.md` (the diagram below, data flow, fairness rules, why two tables). _AC: matches the design in this backlog._
-- [ ] **BOOT-06** — Generate `docs/SETUP.md` (local install for Laravel + Python + Postgres/pgvector, env vars, how to run both services + the UI). _AC: following it from scratch yields a running app._
-- [ ] **BOOT-07** — Confirm project name **RAG Duel** is used consistently across all docs, repo metadata, and UI title. _AC: name is "RAG Duel" everywhere; no placeholder variants._
+- [x] **BOOT-01** — Initialize repo structure: `/laravel`, `/python`, `/docs`, `/infra`, root `docker-compose.yml` placeholder, `.gitignore`, `.editorconfig`. _AC: tree exists and is committed._
+- [x] **BOOT-02** — Generate `README.md` (what/why, quickstart, stack, screenshots placeholder). _AC: a new dev can understand the project in 60s._
+- [x] **BOOT-03** — Generate `CLAUDE.md` and `AGENTS.md` (project conventions, commands, guardrails, "definition of done", how to run tests/lint for both stacks). _AC: both files agree and reference real commands from this repo._
+- [x] **BOOT-04** — Generate `LESSONS.md` (empty template with a dated‑entry format). _AC: file exists with a usage note and one example entry._
+- [x] **BOOT-05** — Generate `docs/ARCHITECTURE.md` (the diagram below, data flow, fairness rules, why two tables). _AC: matches the design in this backlog._
+- [x] **BOOT-06** — Generate `docs/SETUP.md` (local install for Laravel + Python + Postgres/pgvector, env vars, how to run both services + the UI). _AC: following it from scratch yields a running app._
+- [x] **BOOT-07** — Confirm project name **RAG Duel** is used consistently across all docs, repo metadata, and UI title. _AC: name is "RAG Duel" everywhere; no placeholder variants._
 
 ---
 
