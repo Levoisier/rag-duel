@@ -26,6 +26,29 @@ point is that the next person (or the next agent) doesn't re-hit the same wall.
 
 ## Log
 
+### 2026-06-29 — Phase 1 local environment notes  [INFRA-01…INFRA-06]
+**Context:** Standing up the DB + both engines locally.
+**Surprise / problem:**
+- The dev container had Docker installed but **no daemon running** —
+  `docker compose up` failed with a missing `/var/run/docker.sock`.
+- `composer create-project laravel/laravel` resolved to **Laravel 13**, not a
+  separately-numbered "LTS". Laravel ships yearly majors; "latest LTS" in the
+  backlog just means current stable. The scaffold defaults to **SQLite**.
+- FastAPI's `TestClient` prints a Starlette deprecation warning ("use httpx2").
+  Cosmetic — tests pass.
+**Resolution:**
+- Start the daemon (`dockerd &`) before `make up`. The `pgvector/pgvector:pg16`
+  image ships the `vector` extension prebuilt, so DB-01 will only need
+  `CREATE EXTENSION`.
+- Repointed Laravel at the shared Postgres by editing the DB block in `.env`
+  **and** `.env.example` (driver `pgsql`, container creds), then cleared config
+  cache so the change took effect before `migrate`.
+- Left the `TestClient` warning alone; revisit if it becomes an error on a future
+  httpx major.
+**Takeaway:** In a fresh sandbox, confirm the Docker daemon is up before anything
+DB-dependent. When editing Laravel env, change `.env.example` in lockstep and run
+`php artisan config:clear` or the old cached config wins.
+
 ### 2026-06-29 — Phase 0 ambiguity calls  [BOOT-01…BOOT-07]
 **Context:** Bootstrapping the repo skeleton and doc set from `BACKLOG.md` alone.
 **Surprise / problem:** A few things weren't spelled out and had to be decided

@@ -45,12 +45,12 @@
 
 > Goal: one command brings up Postgres+pgvector; both services run locally and can reach it.
 
-- [ ] **INFRA-01** — `docker-compose.yml` with a `pgvector/pgvector:pg16` Postgres service, healthcheck, named volume, exposed port. _AC: `docker compose up -d` → DB accepts connections._
-- [ ] **INFRA-02** — Scaffold Laravel app in `/laravel` (latest LTS), confirm it boots. _AC: `php artisan serve` shows welcome page._
-- [ ] **INFRA-03** — Scaffold FastAPI app in `/python` with `uv` (or `poetry`), confirm it boots. _AC: `GET /health` → 200._
-- [ ] **INFRA-04** — Wire Laravel → Postgres (pgsql driver) and run a no‑op migration. _AC: `php artisan migrate` succeeds against the container DB._
-- [ ] **INFRA-05** — Wire FastAPI → Postgres (e.g. `asyncpg`/`psycopg`) and a connectivity ping. _AC: a `/db-ping` route returns server version._
-- [ ] **INFRA-06** — Root `Makefile` (or `justfile`): `make up`, `make laravel`, `make python`, `make migrate`, `make test`. _AC: each target works._
+- [x] **INFRA-01** — `docker-compose.yml` with a `pgvector/pgvector:pg16` Postgres service, healthcheck, named volume, exposed port. _AC: `docker compose up -d` → DB accepts connections._
+- [x] **INFRA-02** — Scaffold Laravel app in `/laravel` (latest LTS), confirm it boots. _AC: `php artisan serve` shows welcome page._
+- [x] **INFRA-03** — Scaffold FastAPI app in `/python` with `uv` (or `poetry`), confirm it boots. _AC: `GET /health` → 200._
+- [x] **INFRA-04** — Wire Laravel → Postgres (pgsql driver) and run a no‑op migration. _AC: `php artisan migrate` succeeds against the container DB._
+- [x] **INFRA-05** — Wire FastAPI → Postgres (e.g. `asyncpg`/`psycopg`) and a connectivity ping. _AC: a `/db-ping` route returns server version._
+- [x] **INFRA-06** — Root `Makefile` (or `justfile`): `make up`, `make laravel`, `make python`, `make migrate`, `make test`. _AC: each target works._
 
 ---
 
