@@ -1,16 +1,37 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# RAG Duel — docker-compose (PLACEHOLDER, Phase 0 / BOOT-01)
+# RAG Duel — local dev database (Phase 1 / INFRA-01)
 #
-# This is an intentional stub. The real Postgres+pgvector service is defined in
-# Phase 1 / INFRA-01, where it gains: image pgvector/pgvector:pg16, a
-# healthcheck, a named volume, and an exposed port. The Python service Dockerfile
-# arrives in PY-05; both engines run from the host during local dev (see
-# docs/SETUP.md), so for now only the database is containerized.
-#
-# Kept here so the repo tree (BOOT-01) is complete and `make up` has a target to
-# grow into. Do not add real services until INFRA-01.
+# The ONE shared Postgres+pgvector both engines talk to. We containerize only the
+# DB; both services run from the host during local dev (see docs/SETUP.md), so the
+# PHP vs Python timing comparison isn't muddied by container overhead on the app
+# side. Values default to the .env.example credentials.
 # ─────────────────────────────────────────────────────────────────────────────
-services: {}
+services:
+  db:
+    # pgvector ships the `vector` extension prebuilt on top of Postgres 16 — using
+    # the official image means no compiling the extension ourselves (DB-01 just
+    # CREATE EXTENSIONs it).
+    image: pgvector/pgvector:pg16
+    container_name: ragduel-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ragduel}
+      POSTGRES_USER: ${POSTGRES_USER:-ragduel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ragduel}
+    ports:
+      # Host-published so host-run Laravel and FastAPI both reach it at 127.0.0.1.
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # pg_isready, not a TCP probe: the port opens before Postgres can actually
+      # serve, so `make up` / dependents must wait on real readiness.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ragduel} -d ${POSTGRES_DB:-ragduel}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
 
-# volumes:
-#   pgdata:   # named volume for Postgres — added in INFRA-01
+volumes:
+  # Named volume so data survives `docker compose down` (only `down -v` wipes it).
+  pgdata:
