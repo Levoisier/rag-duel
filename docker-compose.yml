@@ -1,0 +1,16 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# RAG Duel — docker-compose (PLACEHOLDER, Phase 0 / BOOT-01)
+#
+# This is an intentional stub. The real Postgres+pgvector service is defined in
+# Phase 1 / INFRA-01, where it gains: image pgvector/pgvector:pg16, a
+# healthcheck, a named volume, and an exposed port. The Python service Dockerfile
+# arrives in PY-05; both engines run from the host during local dev (see
+# docs/SETUP.md), so for now only the database is containerized.
+#
+# Kept here so the repo tree (BOOT-01) is complete and `make up` has a target to
+# grow into. Do not add real services until INFRA-01.
+# ─────────────────────────────────────────────────────────────────────────────
+services: {}
+
+# volumes:
+#   pgdata:   # named volume for Postgres — added in INFRA-01

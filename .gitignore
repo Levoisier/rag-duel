@@ -1,0 +1,43 @@
+# ── Secrets ─────────────────────────────────────────────────────────────────
+# Never commit real keys. The Gemini key (CONTRACT-04) and any Groq fallback
+# key live only in .env, which stays out of git. .env.example is the committed
+# template.
+.env
+.env.*
+!.env.example
+infra/contract.local.env
+
+# ── PHP / Laravel (/laravel) ────────────────────────────────────────────────
+/laravel/vendor/
+/laravel/node_modules/
+/laravel/public/build/
+/laravel/public/hot
+/laravel/storage/*.key
+/laravel/storage/app/*
+/laravel/storage/framework/cache/*
+/laravel/storage/framework/sessions/*
+/laravel/storage/framework/views/*
+/laravel/storage/logs/*
+/laravel/bootstrap/cache/*
+/laravel/.phpunit.cache
+/laravel/.phpunit.result.cache
+/laravel/auth.json
+
+# ── Python / FastAPI (/python) ──────────────────────────────────────────────
+/python/.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+# uv keeps uv.lock committed; the resolved env is local.
+
+# ── Docker / Postgres volume ────────────────────────────────────────────────
+/infra/pgdata/
+
+# ── Editors / OS ────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
