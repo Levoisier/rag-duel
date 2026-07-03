@@ -138,6 +138,14 @@ parameters from `infra/contract.env` — not from literals (PY-04).
 
 ## 7. Tests & lint
 
+The PHP suite runs against real Postgres (the schema is pgvector-specific —
+vector columns, HNSW plans — none of which sqlite can fake), on a separate
+`ragduel_test` database in the same instance. Create it once:
+
+```bash
+docker compose exec db psql -U ragduel -c "CREATE DATABASE ragduel_test OWNER ragduel;"
+```
+
 From the repo root:
 
 ```bash
