@@ -88,6 +88,39 @@ class DatabaseSchemaTest extends TestCase
         }
     }
 
+    public function test_db06_runs_table_accepts_timings_and_rejects_unknown_engines(): void
+    {
+        $documentId = DB::table('documents')->insertGetId([
+            'filename' => 'fixture.txt',
+            'mime' => 'text/plain',
+            'byte_size' => 42,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $row = [
+            'document_id' => $documentId,
+            'engine' => 'php',
+            'question' => 'What is this document about?',
+            // CONTRACT-03 shape — the exact keys Phase 7 will write.
+            'timings' => json_encode([
+                'extract_ms' => 12.3, 'chunk_ms' => 4.5, 'embed_ms' => 210.0,
+                'retrieve_ms' => 8.9, 'ttft_ms' => 350.1, 'total_ms' => 585.8,
+                'loc' => 812,
+            ]),
+            'top_k' => Contract::int('TOP_K'),
+            'embedding_model' => Contract::get('EMBEDDING_MODEL'),
+            'llm_model' => Contract::get('LLM_MODEL'),
+        ];
+
+        DB::table('runs')->insert($row);
+        $this->assertSame(1, DB::table('runs')->count());
+
+        // Anything but php|py must bounce off the check constraint.
+        $this->expectExceptionMessage('runs_engine_check');
+        DB::table('runs')->insert(['engine' => 'node'] + $row);
+    }
+
     /** @return array<int, array<string, mixed>> */
     private function normalizedShape(string $table): array
     {
