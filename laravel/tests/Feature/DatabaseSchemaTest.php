@@ -20,4 +20,18 @@ class DatabaseSchemaTest extends TestCase
 
         $this->assertCount(1, $ext, 'pgvector extension is not enabled (DB-01).');
     }
+
+    public function test_db02_documents_table_exists_with_lifecycle_default(): void
+    {
+        $id = DB::table('documents')->insertGetId([
+            'filename' => 'fixture.pdf',
+            'mime' => 'application/pdf',
+            'byte_size' => 1234,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // status must default to 'pending' — the ingest jobs flip it later.
+        $this->assertSame('pending', DB::table('documents')->find($id)->status);
+    }
 }
