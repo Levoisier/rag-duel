@@ -26,6 +26,50 @@ point is that the next person (or the next agent) doesn't re-hit the same wall.
 
 ## Log
 
+### 2026-07-03 — Gemini's native embedding dim doesn't fit pgvector indexes  [CONTRACT-01]
+**Context:** Locking the shared contract before the Phase 2 migrations, per the
+DB-03 warning ("not a guessed 1536").
+**Surprise / problem:** `gemini-embedding-001` (the current model —
+`text-embedding-004` was retired in Jan 2026) natively emits **3072** dims, but
+pgvector refuses to build HNSW/IVFFlat indexes on columns above **2000** dims.
+Storing the native dim would have made DB-05 impossible.
+**Resolution:** Locked `EMBEDDING_DIM=768` — a Google-recommended Matryoshka
+truncation point that indexes fine. Two riders documented in `contract.env`:
+truncated vectors are **not re-normalized** by the API (cosine ordering is
+unaffected, but normalize before storing), and chunk sizes are defined in
+**characters**, not tokens, so chunker parity never depends on a tokenizer.
+A test guards the ≤2000 ceiling at the source.
+**Takeaway:** When a model's "default" output doesn't fit the index tech,
+resolve it in the contract with the reasoning written down — not in whichever
+engine happens to hit the error first.
+
+### 2026-07-03 — Phase 2 schema notes  [DB-01…DB-07]
+**Context:** Migrating the shared schema and proving the fairness properties.
+**Surprise / problem:**
+- This sandbox's egress policy blocks Docker Hub's blob CDN
+  (`production.cloudfront.docker.com` → 403), so `make up` can't pull the
+  pgvector image here. Not a compose bug — the same file works where Docker Hub
+  is reachable.
+- The `pgvector/pgvector` composer package auto-registers its own
+  `2022_08_03_000000_create_vector_extension` migration from vendor/, which
+  runs *before* ours. Harmless duplication (both are `IF NOT EXISTS`), but
+  don't be confused by two extension migrations in `migrate` output.
+- `pgvector-php` hands integral vector components back as PHP **ints** (`0`,
+  not `0.0`) — a strict `assertSame` on the round-tripped array fails on type.
+  Normalize with `floatval` and keep strict value equality; a tolerance-based
+  compare could mask real float4 truncation.
+- IVFFlat trains its lists from rows present at `CREATE INDEX` time; on the
+  empty tables migrations produce, recall would be degenerate. HNSW builds
+  incrementally — that's why DB-05 went HNSW.
+**Resolution:** Verified the phase against an apt-installed Postgres 16 +
+pgvector 0.6 (`postgresql-16-pgvector`) with the same creds as compose; the
+test suite now runs on pgsql (`ragduel_test` DB) because vector columns, HNSW
+plans, and CHECKs don't exist on sqlite. `docker-compose.yml` stays canonical
+for normal local dev.
+**Takeaway:** Anything pgvector-specific is unprovable on sqlite — point the
+test suite at real Postgres early, and keep planner-dependent assertions
+honest with `SET LOCAL enable_seqscan = off`.
+
 ### 2026-06-29 — Phase 1 local environment notes  [INFRA-01…INFRA-06]
 **Context:** Standing up the DB + both engines locally.
 **Surprise / problem:**

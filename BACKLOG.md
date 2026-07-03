@@ -58,13 +58,13 @@
 
 > Goal: shared schema with separate per‑engine chunk tables so ingestion is measured independently.
 
-- [ ] **DB-01** — Enable `vector` extension via migration. _AC: `\dx` lists `vector`._
-- [ ] **DB-02** — `documents` table: id, filename, mime, byte_size, status, timestamps. _AC: migrates._
-- [ ] **DB-03** — `php_chunks` table: id, document_id (fk, cascade), content (text), embedding (`vector(N)` where **N = Gemini embedding dim** from CONTRACT‑01, not a guessed 1536), ordinal, token_count, timestamps. _AC: migrates; vector dim matches the chosen Gemini model._
-- [ ] **DB-04** — `py_chunks` table: identical shape to `php_chunks`. _AC: migrates._
-- [ ] **DB-05** — IVFFlat (or HNSW) index on each embedding column for cosine. _AC: `EXPLAIN` on a similarity query uses the index._
-- [ ] **DB-06** — `runs` table to log every query: id, document_id, engine (`php`|`py`), question, phase timings (jsonb), top_k, model fields, created_at. _AC: migrates; ready for Phase 7 to write to._
-- [ ] **DB-07** — Verify pgvector binding for **PHP** (e.g. `pgvector/pgvector-php`) and confirm read/write of a vector round‑trips. _AC: a tinker snippet stores and retrieves a vector unchanged._ ⚠️ community package — verify current version, this is where setup friction lives.
+- [x] **DB-01** — Enable `vector` extension via migration. _AC: `\dx` lists `vector`._
+- [x] **DB-02** — `documents` table: id, filename, mime, byte_size, status, timestamps. _AC: migrates._
+- [x] **DB-03** — `php_chunks` table: id, document_id (fk, cascade), content (text), embedding (`vector(N)` where **N = Gemini embedding dim** from CONTRACT‑01, not a guessed 1536), ordinal, token_count, timestamps. _AC: migrates; vector dim matches the chosen Gemini model._
+- [x] **DB-04** — `py_chunks` table: identical shape to `php_chunks`. _AC: migrates._
+- [x] **DB-05** — IVFFlat (or HNSW) index on each embedding column for cosine. _AC: `EXPLAIN` on a similarity query uses the index._ (HNSW — IVFFlat can't train on empty tables.)
+- [x] **DB-06** — `runs` table to log every query: id, document_id, engine (`php`|`py`), question, phase timings (jsonb), top_k, model fields, created_at. _AC: migrates; ready for Phase 7 to write to._
+- [x] **DB-07** — Verify pgvector binding for **PHP** (e.g. `pgvector/pgvector-php`) and confirm read/write of a vector round‑trips. _AC: a tinker snippet stores and retrieves a vector unchanged._ ⚠️ community package — verify current version, this is where setup friction lives.
 
 ---
 
@@ -72,7 +72,7 @@
 
 > Goal: a single source of truth for every parameter that MUST be identical across engines. If it differs, the comparison is invalid.
 
-- [ ] **CONTRACT-01** — `infra/contract.env` (or `contract.yaml`) defining: embedding model + dimension, LLM model + temperature + max_tokens, `TOP_K`, `CHUNK_SIZE`, `CHUNK_OVERLAP`, similarity metric (cosine). Provider is **Gemini** (primary). _AC: both engines load values from here, neither hardcodes._ ⚠️ Gemini embedding dimension differs from OpenAI's 1536 — set the `vector(N)` columns (DB-03/04) to match Gemini's actual output dim; reconcile before Phase 2 migrations run.
+- [~] **CONTRACT-01** — *(contract.env locked & loaded by the PHP side — Phase 2 migrations take `vector(N)` from it; Python wiring lands with PY-04)* `infra/contract.env` (or `contract.yaml`) defining: embedding model + dimension, LLM model + temperature + max_tokens, `TOP_K`, `CHUNK_SIZE`, `CHUNK_OVERLAP`, similarity metric (cosine). Provider is **Gemini** (primary). _AC: both engines load values from here, neither hardcodes._ ⚠️ Gemini embedding dimension differs from OpenAI's 1536 — set the `vector(N)` columns (DB-03/04) to match Gemini's actual output dim; reconcile before Phase 2 migrations run.
 - [ ] **CONTRACT-02** — Document the API contract for the Python service: `POST /ingest` (multipart) and `POST /query` (SSE stream of tokens + a final metrics frame). _AC: written in `docs/ARCHITECTURE.md`; both sides agree._
 - [ ] **CONTRACT-03** — Define the **timings payload** shape both engines emit: `{extract_ms, chunk_ms, embed_ms, retrieve_ms, ttft_ms, total_ms, loc}`. _AC: identical keys/units on both sides._
 - [ ] **CONTRACT-04** — Wire **Gemini** keys. **STOP and ask the human for the Gemini (AI Studio) API key** — we chose Gemini for both chat + embeddings; do not substitute another provider or use a fake placeholder. Put the key in `.env`, list it in `.env.example`, confirm one key works for both engines. _AC: a live Gemini call succeeds from both PHP and Python using the human‑supplied key._
