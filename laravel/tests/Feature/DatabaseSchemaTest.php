@@ -66,6 +66,28 @@ class DatabaseSchemaTest extends TestCase
         );
     }
 
+    public function test_db05_cosine_query_uses_hnsw_index(): void
+    {
+        // Tiny tables make the planner prefer a seq scan even with a perfectly
+        // good index, so force its hand for the plan inspection only.
+        DB::statement('SET LOCAL enable_seqscan = off');
+
+        $zero = '['.implode(',', array_fill(0, Contract::int('EMBEDDING_DIM'), 0)).']';
+
+        foreach (['php_chunks', 'py_chunks'] as $table) {
+            $plan = collect(DB::select(
+                "EXPLAIN SELECT id FROM {$table} ORDER BY embedding <=> ?::vector LIMIT ?",
+                [$zero, Contract::int('TOP_K')]
+            ))->pluck('QUERY PLAN')->implode("\n");
+
+            $this->assertStringContainsString(
+                "{$table}_embedding_hnsw_cosine_idx",
+                $plan,
+                "Cosine top-K on {$table} does not use the HNSW index (DB-05)."
+            );
+        }
+    }
+
     /** @return array<int, array<string, mixed>> */
     private function normalizedShape(string $table): array
     {
