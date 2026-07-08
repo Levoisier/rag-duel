@@ -136,34 +136,116 @@ enforced, not aspirational:
 ## 5. The Python service API contract (CONTRACT-02)
 
 The FastAPI service exposes a small, stable surface. The Laravel side codes
-against exactly this; both sides agree on it here.
+against **exactly** this — so it's pinned here to the field level: request shape,
+response shape, the SSE wire format, and error behavior. "Both sides agree" is
+only real if there's nothing left to guess.
+
+All request/response JSON uses **snake_case** keys, matching the timings payload
+(§6). All contract values referenced below (`TOP_K`, `CHUNK_SIZE`,
+`CHUNK_OVERLAP`, embedding model/dim, LLM model/params) come from
+`infra/contract.env` — the service loads them, never hardcodes them (PY-04).
 
 ### `GET /health`
-Liveness probe. → `200` with a small JSON body. (INFRA-03)
+Liveness probe. → `200 {"status": "ok"}`. (INFRA-03)
 
 ### `GET /db-ping`
-Connectivity check. Returns the Postgres server version. (INFRA-05)
+Connectivity check. → `200 {"server_version": "<postgres version>"}`. (INFRA-05)
 
-### `POST /ingest` — multipart
-- **Request:** `multipart/form-data` with the document file (PDF or txt) and a
-  document identifier so both engines key to the same `documents` row.
-- **Behavior:** extract → chunk → embed → write to `py_chunks`, using contract
-  values.
-- **Response:** JSON including the ingest-phase timings
-  (`extract_ms`, `chunk_ms`, `embed_ms`) and chunk count. (PY-01)
+### `POST /ingest` — `multipart/form-data`
 
-### `POST /query` — SSE
-- **Request:** JSON with the question and the target document.
-- **Behavior:** embed question → cosine top-`TOP_K` against `py_chunks` → build
-  prompt → call provider (Gemini→Groq) → stream tokens.
-- **Response:** an **SSE stream** of token events, followed by a **final metrics
-  frame** carrying the full timings payload (§6). The PHP engine streams the same
-  way via `response()->stream()` (PHP-06/07), so both columns behave identically
-  from the UI's point of view. (PY-03)
+Ingest one document into `py_chunks`.
 
-> The transport detail that matters for fairness: tokens stream first, then exactly
-> one final frame carries the metrics. The UI reads tokens as they arrive and the
-> metrics strip from that last frame.
+**Request** — multipart form fields:
+
+| Field         | Type            | Required | Meaning                                                                 |
+|---------------|-----------------|----------|-------------------------------------------------------------------------|
+| `file`        | file            | yes      | The document binary. `application/pdf` or `text/plain`.                 |
+| `document_id` | integer         | yes      | The id of the `documents` row Laravel already created, so `py_chunks.document_id` keys to the **same** row as `php_chunks` for this upload. |
+
+**Behavior:** extract (`pypdf`/passthrough) → chunk (`CHUNK_SIZE`/`CHUNK_OVERLAP`,
+characters) → embed (`EMBEDDING_MODEL`, truncated to `EMBEDDING_DIM`,
+L2-normalized before storing) → insert `py_chunks` rows with `ordinal` `0…n-1`.
+Each phase is timed with `time.perf_counter()` in ms (METRIC-01).
+
+**Response** — `200 application/json`:
+
+```json
+{
+  "document_id": 42,
+  "chunk_count": 17,
+  "timings": { "extract_ms": 31.4, "chunk_ms": 2.1, "embed_ms": 812.7, "total_ms": 848.9 }
+}
+```
+
+`timings` carries only the phases that apply to ingest (`extract_ms`, `chunk_ms`,
+`embed_ms`, `total_ms`) — `retrieve_ms`/`ttft_ms` are query-only, and `loc` (the
+static DX metric) travels on the query metrics frame. The PHP side's ingest job
+records the same three phase keys for its own `php_chunks` write (PHP-02/03/04).
+
+### `POST /query` — `application/json` request, `text/event-stream` response
+
+Answer one question against one already-ingested document.
+
+**Request** — `200 application/json` body:
+
+```json
+{ "question": "What is the refund window?", "document_id": 42 }
+```
+
+**Behavior:** embed the question → pgvector cosine (`<=>`) top-`TOP_K` against
+`py_chunks` filtered to `document_id` → build the prompt (system + retrieved
+chunks + question) → call the provider (Gemini→Groq, CONTRACT-05) → stream tokens.
+
+**Response** — `Content-Type: text/event-stream`. The stream carries **named SSE
+events** in this order:
+
+1. **Zero or more `token` events** as the LLM streams. `data` is a JSON object so
+   whitespace and newlines survive transport intact:
+
+   ```
+   event: token
+   data: {"text": "The refund window is "}
+
+   event: token
+   data: {"text": "30 days."}
+   ```
+
+2. **Exactly one terminal `metrics` event** carrying the full query timings
+   payload (§6) — this is always the last event on a successful stream:
+
+   ```
+   event: metrics
+   data: {"embed_ms": 44.0, "retrieve_ms": 12.3, "ttft_ms": 240.5, "total_ms": 1032.8, "loc": 214}
+   ```
+
+The PHP engine streams the **same named events with the same `data` shape** via
+`response()->stream()` (PHP-06/07), so the Livewire UI (Phase 6) consumes both
+columns with one identical SSE reader — that identical consumption is the fairness
+property this format buys.
+
+### SSE framing rules (both engines)
+
+- **Named events only:** `token`, `metrics`, and `error`. No bare `data:`-only
+  lines — the UI dispatches on the event name.
+- **`data` is always a single-line JSON object.** A token's text lives in
+  `data.text` (never the raw `data:` bytes), so answer whitespace is never lost or
+  collapsed by the SSE line protocol.
+- **Order is fixed:** all `token` events first, then exactly one `metrics` event
+  (or one `error` event) as the final frame. The UI paints tokens as they arrive
+  and reads the metrics strip from that last frame.
+
+### Errors (both endpoints)
+
+Errors are JSON on the non-streaming path, or a terminal `error` SSE event mid-stream.
+
+| Situation                                   | HTTP / SSE                              | Body / `data`                                    |
+|---------------------------------------------|-----------------------------------------|--------------------------------------------------|
+| Missing/invalid field, unsupported mime     | `422 application/json`                  | `{"error": "<reason>"}`                           |
+| Unknown `document_id`                        | `404 application/json`                  | `{"error": "document not found"}`                |
+| Provider free-tier quota exhausted (CONTRACT-06) | `429 application/json` (pre-stream) **or** terminal `error` event (mid-stream) | `{"error": "rate limit hit, try again later"}` |
+
+Quota exhaustion degrades gracefully with a friendly message rather than hammering
+the API (CONTRACT-06); it never silently incurs charges.
 
 ---
 
@@ -181,6 +263,11 @@ frame. This is the comparison's currency:
 | `ttft_ms`      | ms   | time to first token from the LLM                            |
 | `total_ms`     | ms   | end-to-end for the measured operation                       |
 | `loc`          | int  | static lines-of-code for that engine (the DX metric)        |
+
+This table is the master registry of key names + units. Each operation emits the
+subset that applies to it: **ingest** → `extract_ms`, `chunk_ms`, `embed_ms`,
+`total_ms` (§5); **query** → `embed_ms`, `retrieve_ms`, `ttft_ms`, `total_ms`,
+`loc` (§5). No engine invents a key outside this table or a unit other than ms.
 
 Rules:
 - **Identical keys and units on both sides** — this is the AC of CONTRACT-03. A
@@ -232,6 +319,12 @@ from hitting a wall). Current load-bearing decisions:
   one key, permanent free tier, identical endpoints on both engines (fairness).
   Locked. The key is human-supplied (CONTRACT-04); billing stays off/capped
   (CONTRACT-06).
+- **SSE wire format is pinned to named events** (`token`/`metrics`/`error`) with
+  a single-line JSON `data` payload, identical on both engines (CONTRACT-02, §5).
+  Chosen over bare `data:`-only lines so the UI dispatches on the event name and so
+  answer whitespace/newlines survive the SSE line protocol (they ride inside
+  `data.text`, not the raw stream bytes). One SSE reader consumes both columns —
+  that identical consumption is the fairness property.
 - **Two separate chunk tables** rather than one shared table — §3.
 - **Embedding dimension is contract-derived, not assumed** — set `vector(N)` from
   Gemini's actual output dim (CONTRACT-01), reconciled before Phase 2 migrations.
