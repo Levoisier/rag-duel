@@ -48,6 +48,21 @@ final class Contract
         return (float) $raw;
     }
 
+    /**
+     * A comma-separated contract value as an ordered list (e.g. TIMINGS_KEYS,
+     * CONTRACT-03). Order is preserved because the metrics frame is defined in a
+     * canonical order both engines must honor.
+     *
+     * @return list<string>
+     */
+    public static function list(string $key): array
+    {
+        return array_values(array_filter(
+            array_map('trim', explode(',', self::get($key))),
+            static fn (string $item): bool => $item !== '',
+        ));
+    }
+
     /** The contract lives at the repo root, one level above the Laravel app. */
     public static function path(): string
     {

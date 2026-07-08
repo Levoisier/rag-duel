@@ -57,6 +57,21 @@ class ContractTest extends TestCase
         $this->assertIsFloat(Contract::float('LLM_TEMPERATURE'));
     }
 
+    /**
+     * CONTRACT-03 — the timings payload keys are pinned in the shared contract, in
+     * canonical order, so the PHP and Python metrics frames carry an identical set.
+     * Both engines read this same list; asserting it here guards the source of truth
+     * against a stray edit. The Python twin (python/tests/test_contract.py) asserts
+     * byte-for-byte the same expectation against the same file.
+     */
+    public function test_timings_keys_match_the_canonical_contract03_set(): void
+    {
+        $this->assertSame(
+            ['extract_ms', 'chunk_ms', 'embed_ms', 'retrieve_ms', 'ttft_ms', 'total_ms', 'loc'],
+            Contract::list('TIMINGS_KEYS'),
+        );
+    }
+
     public function test_missing_key_fails_hard_instead_of_defaulting(): void
     {
         // Silent defaults are how engines drift apart — the loader must throw.
