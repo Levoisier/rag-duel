@@ -8,18 +8,20 @@ dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.32",
     "psycopg[binary]>=3.2",   # Postgres driver (async) for the shared DB
+    "httpx>=0.28",            # async HTTP for the Gemini/Groq provider layer (CONTRACT-05)
 ]
 
 [dependency-groups]
 # uv's native dev group — installed by `uv sync`, excluded from the published app.
 dev = [
     "pytest>=8.3",
-    "httpx>=0.28",      # FastAPI's TestClient transport
-    "ruff>=0.8",        # lint + format (TEST-04)
+    "pytest-asyncio>=0.24",   # async provider/fallback tests (CONTRACT-05)
+    "ruff>=0.8",              # lint + format (TEST-04)
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
 
 [build-system]
 requires = ["hatchling"]

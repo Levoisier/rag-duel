@@ -35,4 +35,16 @@ return [
         ],
     ],
 
+    // AI providers (CONTRACT-04/05). Keys are read from the environment here so
+    // they never leak into infra/contract.env (which is committed). The provider
+    // classes resolve them through config(), which is config-cache safe.
+    'gemini' => [
+        'key' => env('GEMINI_API_KEY'),
+    ],
+
+    'groq' => [
+        'key' => env('GROQ_API_KEY'),
+        'model' => env('GROQ_MODEL', 'llama-3.3-70b-versatile'),
+    ],
+
 ];

@@ -114,7 +114,10 @@ enforced, not aspirational:
    must change both engines' behavior with no code edit (CONTRACT-01, PY-04).
 2. **Same provider, same fallback order.** Gemini primary → Groq on
    429/5xx/timeout, behind one `chat()`/`embed()` interface, identical order on
-   both sides (CONTRACT-05).
+   both sides (CONTRACT-05). Groq has no embeddings API, so the **embed** chain is
+   Gemini-only while the **chat** chain is Gemini→Groq; that split is between
+   *capabilities*, and both engines resolve the same two chains from the same
+   contract — which is the "identical PHP vs Python" the rule actually pins.
 3. **Same chunk boundaries.** Both chunkers split on the same paragraph/sentence
    boundaries to the same size/overlap; a parity test proves equivalence on a
    fixture (TEST-03).
@@ -319,6 +322,11 @@ from hitting a wall). Current load-bearing decisions:
   one key, permanent free tier, identical endpoints on both engines (fairness).
   Locked. The key is human-supplied (CONTRACT-04); billing stays off/capped
   (CONTRACT-06).
+- **Provider fallback classifies on one bit: `retryable`.** 429/5xx/timeout are
+  retryable (advance to the next provider); everything else surfaces, so a real
+  bug (bad request, auth) isn't masked by a silent fallback. Chat falls back only
+  *before the first token* — matching how rate limits actually arrive (upfront,
+  not mid-stream). Identical policy in both engines (CONTRACT-05).
 - **SSE wire format is pinned to named events** (`token`/`metrics`/`error`) with
   a single-line JSON `data` payload, identical on both engines (CONTRACT-02, §5).
   Chosen over bare `data:`-only lines so the UI dispatches on the event name and so

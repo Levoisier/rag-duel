@@ -21,7 +21,9 @@ _CONTRACT_PATH = Path(__file__).resolve().parents[2] / "infra" / "contract.env"
 @lru_cache(maxsize=1)
 def _values() -> dict[str, str]:
     if not _CONTRACT_PATH.is_file():
-        raise RuntimeError(f"Shared contract not found at {_CONTRACT_PATH} (CONTRACT-01).")
+        raise RuntimeError(
+            f"Shared contract not found at {_CONTRACT_PATH} (CONTRACT-01)."
+        )
 
     values: dict[str, str] = {}
     for line in _CONTRACT_PATH.read_text().splitlines():
@@ -55,7 +57,9 @@ def get_float(key: str) -> float:
     try:
         return float(raw)
     except ValueError as exc:
-        raise RuntimeError(f"Contract key [{key}] expected a number, got [{raw}].") from exc
+        raise RuntimeError(
+            f"Contract key [{key}] expected a number, got [{raw}]."
+        ) from exc
 
 
 def get_list(key: str) -> list[str]:
