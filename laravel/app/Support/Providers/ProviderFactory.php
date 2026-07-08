@@ -30,6 +30,15 @@ final class ProviderFactory
         return new FallbackProvider($chain, $embedChain);
     }
 
+    /**
+     * The provider the engine actually uses: the fallback seam behind the
+     * app-side throttle (CONTRACT-06), both configured from the contract.
+     */
+    public static function throttled(): ThrottledProvider
+    {
+        return new ThrottledProvider(self::make(), Throttle::fromContract());
+    }
+
     private static function instantiate(string $name): Provider
     {
         return match ($name) {

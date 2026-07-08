@@ -13,6 +13,16 @@ guardrail ("identical PHP vs Python") actually pins.
 """
 
 from app.providers.base import FallbackProvider, Provider, ProviderError
-from app.providers.factory import build_provider
+from app.providers.factory import build_provider, build_throttled_provider
+from app.providers.throttle import Throttle, ThrottledProvider, ThrottleError
 
-__all__ = ["FallbackProvider", "Provider", "ProviderError", "build_provider"]
+__all__ = [
+    "FallbackProvider",
+    "Provider",
+    "ProviderError",
+    "Throttle",
+    "ThrottleError",
+    "ThrottledProvider",
+    "build_provider",
+    "build_throttled_provider",
+]

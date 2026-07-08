@@ -11,6 +11,7 @@ from app import contract
 from app.providers.base import FallbackProvider, Provider
 from app.providers.gemini import GeminiProvider
 from app.providers.groq import GroqProvider
+from app.providers.throttle import Throttle, ThrottledProvider
 
 _REGISTRY = {
     "gemini": GeminiProvider,
@@ -34,3 +35,9 @@ def build_provider() -> FallbackProvider:
     ]
     embed_chain = [provider for provider in chain if provider.supports_embed]
     return FallbackProvider(chat_chain=chain, embed_chain=embed_chain)
+
+
+def build_throttled_provider() -> ThrottledProvider:
+    """The provider the engine actually uses: the fallback seam behind the
+    app-side throttle (CONTRACT-06), both configured from the contract."""
+    return ThrottledProvider(build_provider(), Throttle.from_contract())

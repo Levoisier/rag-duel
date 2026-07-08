@@ -45,7 +45,11 @@ Open `.env` and set, at minimum:
   Gemini billing **disabled / hard-capped** (CONTRACT-06) so a forgotten key can
   never start billing — the free tier simply rate-limits when exhausted.
 - **`GROQ_API_KEY`** — *optional*. The Groq fallback (CONTRACT-05) only triggers on
-  Gemini 429/5xx/timeout. Safe to leave blank to start.
+  Gemini 429/5xx/timeout, and only for **chat** (Groq has no embeddings API, so the
+  embed path stays Gemini-only). Safe to leave blank to start.
+- **`GROQ_MODEL`** — *optional*. The Groq chat model used on fallback; defaults to
+  `llama-3.3-70b-versatile`. A fallback model isn't a fairness parameter, so it's
+  env config, not part of `infra/contract.env`.
 - The **`POSTGRES_*` / `DB_*`** values default to the docker-compose database
   below; leave them as-is for a standard local run.
 - **`PYTHON_SERVICE_URL`** — where Laravel reaches the Python engine; defaults to
@@ -181,7 +185,10 @@ CI (TEST-04) spins up a pgvector service and runs both suites + lint on every PR
   friction point (DB-07). See [`../LESSONS.md`](../LESSONS.md).
 - **Gemini calls 429 / rate-limited.** Expected on the free tier under load — the
   app throttles and degrades gracefully (CONTRACT-06), and falls back to Groq if a
-  `GROQ_API_KEY` is set (CONTRACT-05). This is the safe failure mode, not a bug.
+  `GROQ_API_KEY` is set (CONTRACT-05). This is the safe failure mode, not a bug. The
+  app-side ceilings (`PROVIDER_MAX_RPM` / `PROVIDER_MAX_RPD`) live in
+  `infra/contract.env` so both engines refuse to hammer the API past the same cap
+  and surface a friendly "rate limit hit, try again later" instead.
 
 ---
 

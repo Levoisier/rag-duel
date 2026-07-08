@@ -322,6 +322,13 @@ from hitting a wall). Current load-bearing decisions:
   one key, permanent free tier, identical endpoints on both engines (fairness).
   Locked. The key is human-supplied (CONTRACT-04); billing stays off/capped
   (CONTRACT-06).
+- **Cost safety is an app-side throttle, not just billing config.** Both engines
+  cap their own outbound calls to `PROVIDER_MAX_RPM`/`PROVIDER_MAX_RPD` (from the
+  contract) *before* the network, degrading to a friendly message instead of
+  hammering the API (CONTRACT-06). The mechanism differs by runtime — Python counts
+  in-process, PHP counts through the cache-backed RateLimiter (php-fpm can't hold a
+  counter between requests) — but the ceiling and the degrade-don't-hammer behavior
+  are identical.
 - **Provider fallback classifies on one bit: `retryable`.** 429/5xx/timeout are
   retryable (advance to the next provider); everything else surfaces, so a real
   bug (bad request, auth) isn't masked by a silent fallback. Chat falls back only

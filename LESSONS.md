@@ -26,6 +26,39 @@ point is that the next person (or the next agent) doesn't re-hit the same wall.
 
 ## Log
 
+### 2026-07-08 — Provider seam: Groq can't embed, and php-fpm can't count  [CONTRACT-05/06]
+**Context:** Building the shared provider abstraction (Gemini→Groq fallback) and
+the app-side throttle in both engines during Phase 3.
+**Surprise / problem:**
+- **Groq has no embeddings API** — it serves chat models only. The backlog says
+  "Gemini primary → Groq fallback" as if it's one uniform chain, but a Groq
+  *embed* fallback can't exist. Taking "identical fallback order PHP vs Python"
+  literally for embeddings would mean inventing a Groq call that 404s.
+- **A throttle that counts in-process is a no-op under php-fpm.** Each request is
+  a fresh worker, so an in-memory per-minute counter resets every request and
+  never actually caps anything — the Python (warm uvicorn) side counts in-memory
+  fine, but the PHP side needs shared state.
+- Two engine-fairness scares that turned out fine: Groq needs its *own* model id
+  (the contract's `gemini-2.5-flash` is Gemini-only), and PHPUnit 12 ignores the
+  `@dataProvider` docblock — it wants the `#[DataProvider]` attribute.
+**Resolution:**
+- Split the chains by **capability, not by engine**: chat = Gemini→Groq, embed =
+  Gemini-only, and *both engines resolve the same two chains from the same
+  contract*. That's what the guardrail actually pins ("identical PHP vs Python"),
+  so the asymmetry is legal. `supportsEmbed()`/`supports_embed` filters the embed
+  chain in the factory.
+- PHP throttle counts through Laravel's **cache-backed RateLimiter** (persists
+  across php-fpm requests); Python uses an in-process rolling window. Different
+  mechanism, identical ceiling (`PROVIDER_MAX_RPM/RPD` from the contract) and
+  identical degrade-don't-hammer behavior — same spirit as hrtime vs perf_counter.
+- Groq model + keys are **env config**, never `infra/contract.env`: a fallback
+  model isn't a fairness parameter, and keys are secrets.
+**Takeaway:** "Same provider, same order" is a claim about the two *engines*
+agreeing, not about every capability having the same chain or every runtime using
+the same bookkeeping. Encode the invariant that matters (identical ceiling,
+identical chains-from-contract) and let the mechanism differ where the runtime
+forces it — but write down *why* so the next agent doesn't "fix" the asymmetry.
+
 ### 2026-07-03 — Gemini's native embedding dim doesn't fit pgvector indexes  [CONTRACT-01]
 **Context:** Locking the shared contract before the Phase 2 migrations, per the
 DB-03 warning ("not a guessed 1536").
